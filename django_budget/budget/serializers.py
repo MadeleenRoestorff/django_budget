@@ -7,9 +7,3 @@ class FixedExpensesSerializer(serializers.ModelSerializer):
     class Meta:
         fields = "__all__"
         model = models.FixedExpenses
-
-
-class NecessitiesSerializer(serializers.ModelSerializer):
-    class Meta:
-        fields = "__all__"
-        model = models.Necessities

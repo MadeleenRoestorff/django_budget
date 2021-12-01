@@ -16,17 +16,3 @@ class FixedExpensesViewSet(viewsets.ModelViewSet):
         """Return count for the queryset"""
         queryset = self.filter_queryset(self.get_queryset())
         return Response(queryset.count())
-
-
-class NecessitiesViewSet(viewsets.ModelViewSet):
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = "__all__"
-    serializer_class = serializers.NecessitiesSerializer
-    queryset = models.Necessities.objects.all().order_by('-id')
-
-    @action(detail=False)
-    def count(self, request, *args, **kwargs):
-        """Return count for the queryset"""
-        queryset = self.filter_queryset(self.get_queryset())
-        return Response(queryset.count())
-

@@ -6,7 +6,6 @@ router = routers.DefaultRouter()
 
 # Model view sets
 router.register(r'fixedexpenses', views.FixedExpensesViewSet)
-router.register(r'necessities', views.NecessitiesViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
