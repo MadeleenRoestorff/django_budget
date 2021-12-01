@@ -29,3 +29,4 @@ class NecessitiesViewSet(viewsets.ModelViewSet):
         """Return count for the queryset"""
         queryset = self.filter_queryset(self.get_queryset())
         return Response(queryset.count())
+
