@@ -4,6 +4,7 @@ from rest_framework.response import Response
 
 from . import serializers, models
 
+
 class FixedExpensesViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.OrderingFilter]
     ordering_fields = "__all__"
@@ -15,6 +16,7 @@ class FixedExpensesViewSet(viewsets.ModelViewSet):
         """Return count for the queryset"""
         queryset = self.filter_queryset(self.get_queryset())
         return Response(queryset.count())
+
 
 class NecessitiesViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.OrderingFilter]

@@ -18,6 +18,7 @@ class FixedExpensesAdmin(admin.ModelAdmin):
         field.name for field in models.FixedExpenses._meta.fields
     ]
 
+
 @admin.register(models.Necessities)
 class NecessitiesAdmin(admin.ModelAdmin):
     list_filter = []
