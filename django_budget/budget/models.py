@@ -10,6 +10,7 @@ class Budget(models.Model):
         auto_now=True, null=True, blank=True)
     timestamp = models.DateTimeField(null=True, blank=True)
     expenses_list = models.JSONField(null=True, blank=True)
+    income_in_cents = models.IntegerField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         print("we can process data here before saving")
@@ -44,31 +45,43 @@ class Expense(models.Model):
         if not self.description:
             self.description = self.category
 
+        if self.id:
+            prev_version = Expense.objects.get(id=self.id)
+            if self.linked_budget_id != prev_version.linked_budget_id:
+                budget_instance = Budget.objects.get(
+                    id=prev_version.linked_budget_id
+                )
+                list_of_expense_ids = budget_instance.expenses_list
+
+                if type(list_of_expense_ids) is list:
+                    try:
+                        while True:
+                            list_of_expense_ids.remove(self.id)
+                    except:
+                        pass
+                    budget_instance.expenses_list = sorted(
+                        set(list_of_expense_ids)
+                    )
+                    budget_instance.save()
+
         # Save self as the normal save method would
         super(Expense, self).save(*args, **kwargs)
 
     @staticmethod
     def post_save(sender, instance, created, **kwargs):
 
-        for budget_index in range(len(Budget.objects.all())):
-            budget_instance = Budget.objects.get(id=budget_index+1)
-            list_of_expense_ids = getattr(
-                budget_instance, "expenses_list")
+        budget_instance = Budget.objects.get(id=instance.linked_budget_id)
+        list_of_expense_ids = budget_instance.expenses_list
 
-            if type(list_of_expense_ids) is not list:
-                list_of_expense_ids = []
+        if type(list_of_expense_ids) is not list:
+            list_of_expense_ids = []
 
-            if instance.id not in list_of_expense_ids:
-                list_of_expense_ids.append(instance.id)
-                setattr(budget_instance, "expenses_list",
-                        sorted(set(list_of_expense_ids)))
-                budget_instance.save()
-
-            elif instance.id in list_of_expense_ids and budget_index + 1 != instance.linked_budget_id:
-                list_of_expense_ids.remove(instance.id)
-                setattr(budget_instance, "expenses_list",
-                        sorted(set(list_of_expense_ids)))
-                budget_instance.save()
+        if instance.id not in list_of_expense_ids:
+            list_of_expense_ids.append(instance.id)
+            budget_instance.expenses_list = sorted(
+                set(list_of_expense_ids)
+            )
+            budget_instance.save()
 
 
 ##### connect signal functions ################################################
