@@ -5,7 +5,9 @@ from . import views
 router = routers.DefaultRouter()
 
 # Model view sets
-router.register(r'fixedexpenses', views.FixedExpensesViewSet)
+router.register(r'budget', views.BudgetViewSet)
+router.register(r'expenses', views.ExpenseViewSet)
+
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -11,9 +11,17 @@ def has_superuser_permission(request):
 admin.site.has_permission = has_superuser_permission
 
 
-@admin.register(models.FixedExpenses)
-class FixedExpensesAdmin(admin.ModelAdmin):
+@admin.register(models.Budget)
+class BudgetAdmin(admin.ModelAdmin):
     list_filter = []
     list_display = [
-        field.name for field in models.FixedExpenses._meta.fields
+        field.name for field in models.Budget._meta.fields
+    ]
+
+
+@admin.register(models.Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    list_filter = []
+    list_display = [
+        field.name for field in models.Expense._meta.fields
     ]
