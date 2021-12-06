@@ -5,11 +5,11 @@ from rest_framework.response import Response
 from . import serializers, models
 
 
-class FixedExpensesViewSet(viewsets.ModelViewSet):
+class BudgetViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.OrderingFilter]
     ordering_fields = "__all__"
-    serializer_class = serializers.FixedExpensesSerializer
-    queryset = models.FixedExpenses.objects.all().order_by('-id')
+    serializer_class = serializers.BudgetSerializer
+    queryset = models.Budget.objects.all().order_by('-id')
 
     @action(detail=False)
     def count(self, request, *args, **kwargs):
@@ -18,15 +18,14 @@ class FixedExpensesViewSet(viewsets.ModelViewSet):
         return Response(queryset.count())
 
 
-class NecessitiesViewSet(viewsets.ModelViewSet):
+class ExpenseViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.OrderingFilter]
     ordering_fields = "__all__"
-    serializer_class = serializers.NecessitiesSerializer
-    queryset = models.Necessities.objects.all().order_by('-id')
+    serializer_class = serializers.ExpenseSerializer
+    queryset = models.Expense.objects.all().order_by('-id')
 
     @action(detail=False)
     def count(self, request, *args, **kwargs):
         """Return count for the queryset"""
         queryset = self.filter_queryset(self.get_queryset())
         return Response(queryset.count())
-
