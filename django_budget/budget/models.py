@@ -3,7 +3,7 @@ from django.db.models.signals import post_save
 
 
 class Budget(models.Model):
-    """Monthly Budgets"""
+    """Monthly Budgets with linked expense instances"""
     timestamp_created_server = models.DateTimeField(auto_now_add=True)
     timestamp_updated_server = models.DateTimeField(auto_now=True)
     timestamp = models.DateTimeField(null=True, blank=True)
