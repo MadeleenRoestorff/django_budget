@@ -4,10 +4,8 @@ from django.db.models.signals import post_save
 
 class Budget(models.Model):
     """Monthly Budgets"""
-    timestamp_created_server = models.DateTimeField(
-        auto_now_add=True, null=True, blank=True)
-    timestamp_updated_server = models.DateTimeField(
-        auto_now=True, null=True, blank=True)
+    timestamp_created_server = models.DateTimeField(auto_now_add=True)
+    timestamp_updated_server = models.DateTimeField(auto_now=True)
     timestamp = models.DateTimeField(null=True, blank=True)
     expenses_list = models.JSONField(null=True, blank=True)
     income_in_cents = models.IntegerField(null=True, blank=True)
@@ -33,36 +31,50 @@ post_save.connect(
 class Expense(models.Model):
     """Monthly expenses"""
     timestamp_created_server = models.DateTimeField(auto_now_add=True)
+    # Automatic create a timestamp when an expense instance is created
     timestamp_updated_server = models.DateTimeField(auto_now=True)
+    # Automatic create a timestamp when an expense instance is updated
     timestamp = models.DateTimeField(null=True, blank=True)
+    # User defined timestamp
     linked_budget_id = models.IntegerField(null=True, blank=True)
+    # User selected monthly budget instance to link to this expense
     category = models.CharField(max_length=60, null=True, blank=True)
+    # User defined expense category
     description = models.CharField(max_length=60, null=True, blank=True)
+    # User defined expense description
     value_in_cents = models.IntegerField(null=True, blank=True)
+    # User defined expense value
 
     def save(self, *args, **kwargs):
 
+        # If now description is given use the category as the description
         if not self.description:
             self.description = self.category
 
+        # Remove links to previous linked budget
+        # get the previous id of the linked budget in the database
+        # remove the current instanse expense id
         if self.id:
             prev_version = Expense.objects.get(id=self.id)
-            if self.linked_budget_id != prev_version.linked_budget_id:
-                budget_instance = Budget.objects.get(
-                    id=prev_version.linked_budget_id
-                )
-                list_of_expense_ids = budget_instance.expenses_list
-
-                if type(list_of_expense_ids) is list:
-                    try:
-                        while True:
-                            list_of_expense_ids.remove(self.id)
-                    except:
-                        pass
-                    budget_instance.expenses_list = sorted(
-                        set(list_of_expense_ids)
+            try:
+                if self.linked_budget_id != prev_version.linked_budget_id:
+                    budget_instance = Budget.objects.get(
+                        id=prev_version.linked_budget_id
                     )
-                    budget_instance.save()
+                    list_of_expense_ids = budget_instance.expenses_list
+
+                    if type(list_of_expense_ids) is list:
+                        try:
+                            while True:
+                                list_of_expense_ids.remove(self.id)
+                        except:
+                            pass
+                        budget_instance.expenses_list = sorted(
+                            set(list_of_expense_ids)
+                        )
+                        budget_instance.save()
+            except:
+                pass
 
         # Save self as the normal save method would
         super(Expense, self).save(*args, **kwargs)
@@ -70,6 +82,7 @@ class Expense(models.Model):
     @staticmethod
     def post_save(sender, instance, created, **kwargs):
 
+        # Use linked_budget_id to link expense to a budget
         budget_instance = Budget.objects.get(id=instance.linked_budget_id)
         list_of_expense_ids = budget_instance.expenses_list
 
