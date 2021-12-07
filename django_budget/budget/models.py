@@ -1,6 +1,8 @@
 from typing import Dict
 from django.db import models
 from django.db.models.signals import post_save
+from math import ceil
+from datetime import datetime, date, timedelta
 
 
 class Budget(models.Model):
@@ -9,30 +11,40 @@ class Budget(models.Model):
     timestamp_updated_server = models.DateTimeField(auto_now=True)
     timestamp = models.DateTimeField(null=True, blank=True)
     expenses_list = models.JSONField(null=True, blank=True)
-    income_list_in_cents = models.JSONField(null=True, blank=True)
-    fixed_expenses_list = models.JSONField(null=True, blank=True)
+    income_in_cents = models.JSONField(null=True, blank=True)
+    fixed_expenses = models.JSONField(null=True, blank=True)
     variable_expenses = models.JSONField(null=True, blank=True)
     total_remaining_in_cents = models.IntegerField(null=True, blank=True)
     remaining_by_category_in_cents = models.JSONField(null=True, blank=True)
     remaining_this_week_in_cents = models.IntegerField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
+
         income_total = 0
-        for person_income in self.income_list_in_cents:
-            income_total += list(person_income.values())[0]
+        for person_income in self.income_in_cents:
+            income_total += self.income_in_cents[person_income]
 
         fixed_expenses_total = 0
-        for fixed_expense_item in self.fixed_expenses_list:
-            fixed_expenses_total = fixed_expenses_total - \
-                list(fixed_expense_item.values())[0]
+        for fixed_expense in self.fixed_expenses:
+            fixed_expenses_total -= self.fixed_expenses[fixed_expense]
 
-        # self.total_remaining_in_cents = income_total + fixed_expenses_total + variable_expenses_total
+        remaining_by_category = {}
+        variable_expenses_total = 0
+        for variable_expense in self.variable_expenses:
+            self.variable_expenses[variable_expense].setdefault("actual", 0)
+            variable_expenses_total -= self.variable_expenses[variable_expense]["actual"]
+            remaining_by_category[variable_expense] = self.variable_expenses[
+                variable_expense]["budgeted"] - self.variable_expenses[variable_expense]["actual"]
 
-        print("we can process data here before saving")
+        self.total_remaining_in_cents = income_total + \
+            fixed_expenses_total + variable_expenses_total
+
+        self.remaining_by_category_in_cents = remaining_by_category
+
         # Save self as the normal save method would
         super(Budget, self).save(*args, **kwargs)
 
-    @staticmethod
+    @ staticmethod
     def post_save(sender, instance, created, **kwargs):
 
         print("we can run side effects here after saving")
@@ -106,14 +118,13 @@ class Expense(models.Model):
                         dict_of_prev_budget_category["actual"] -= prev_ver.value_in_cents
                         prev_budget_instance.save()
 
-
             except:
                 pass
 
         # Save self as the normal save method would
         super(Expense, self).save(*args, **kwargs)
 
-    @staticmethod
+    @ staticmethod
     def post_save(sender, instance, created, **kwargs):
 
         try:
@@ -137,6 +148,28 @@ class Expense(models.Model):
                 if type(dict_of_instance_budget_category) is dict:
                     dict_of_instance_budget_category["actual"] += instance.value_in_cents
                     budget_instance.save()
+
+             # Week begins on monday isoweekday vs weekday
+            days_in_month = 31
+            try:
+                days_in_month = date(datetime.now().year, datetime.now(
+                ).month, 1) - date(datetime.now().year, datetime.now().month + 1, 1)
+            except:
+                pass
+
+            weeks_in_month = ceil(
+                (date(datetime.now().year, datetime.now().month,
+                      1).weekday()+days_in_month)/7
+            )
+
+            current_week = ceil(
+                (date(datetime.now().year, datetime.now().month,
+                      1).weekday()+datetime.now().day)/7
+            )
+
+            print('This is week {} out of {}.'.format(
+                current_week, weeks_in_month))
+
         except:
             pass
 
