@@ -1,5 +1,4 @@
 #migrations
-./django-budget/budget/migrations/
 ./django-budget/budget/migrations/*
 
 # Byte-compiled / optimized / DLL files
