@@ -7,3 +7,4 @@ rm db.sqlite3
 echo "Cleaning Migrations"
 
 rm ./budget/Migrations/*
+
