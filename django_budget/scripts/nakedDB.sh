@@ -4,10 +4,6 @@ echo "No turning back, deleting the database"
 
 rm db.sqlite3
 
-echo "Cleaning Migrations"
-
-rm ./budget/migrations/*
-
 python3 manage.py makemigrations
 
 python3 manage.py migrate
