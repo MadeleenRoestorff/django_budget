@@ -2,7 +2,7 @@ from typing import Dict
 from django.db import models
 from django.db.models.signals import post_save
 from math import ceil
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 
 
 class Budget(models.Model):
@@ -17,8 +17,26 @@ class Budget(models.Model):
     total_remaining_in_cents = models.IntegerField(null=True, blank=True)
     remaining_by_category_in_cents = models.JSONField(null=True, blank=True)
     remaining_this_week_in_cents = models.IntegerField(null=True, blank=True)
+    left_over_inbudget_in_cents = models.IntegerField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
+
+        # Week begins on monday isoweekday vs weekday
+        days_in_month = 31
+        try:
+            days_in_month = date(self.timestamp.year, self.timestamp.month, 1) - \
+                date(self.timestamp.year, self.timestamp.month + 1, 1)
+        except:
+            pass
+        weeks_in_month = ceil(
+            (date(datetime.now().year, datetime.now().month,
+                  1).weekday()+days_in_month)/7
+        )
+
+        current_week = ceil(
+            (date(datetime.now().year, datetime.now().month,
+                  1).weekday()+datetime.now().day)/7
+        )
 
         income_total = 0
         for person_income in self.income_in_cents:
@@ -28,18 +46,43 @@ class Budget(models.Model):
         for fixed_expense in self.fixed_expenses:
             fixed_expenses_total -= self.fixed_expenses[fixed_expense]
 
-        remaining_by_category = {}
-        variable_expenses_total = 0
+        expenses_for_budget_instance = {}
+        if type(self.expenses_list) is list:
+            expenses_for_budget_instance = Expense.objects.filter(
+                id__in=self.expenses_list).values("timestamp", "category", "value_in_cents")
+
+        self.remaining_by_category_in_cents = {}
+        self.left_over_inbudget_in_cents = income_total + fixed_expenses_total
+        self.remaining_this_week_in_cents = 0
+        self.total_remaining_in_cents = income_total + fixed_expenses_total
+
         for variable_expense in self.variable_expenses:
-            self.variable_expenses[variable_expense].setdefault("actual", 0)
-            variable_expenses_total -= self.variable_expenses[variable_expense]["actual"]
-            remaining_by_category[variable_expense] = self.variable_expenses[
+            self.variable_expenses[variable_expense]["actual"] = 0
+            self.remaining_this_week_in_cents += (
+                self.variable_expenses[variable_expense]["budgeted"])/weeks_in_month
+            try:
+                for expense in expenses_for_budget_instance:
+                    expense_timestamp = expense["timestamp"]
+                    expense_category = expense["category"]
+                    expense_value_in_cents = expense["value_in_cents"]
+                    if expense_category.casefold().strip() == variable_expense.casefold().strip():
+                        self.variable_expenses[variable_expense]["actual"] += expense_value_in_cents
+
+                    expense_week = ceil(
+                        (date(expense_timestamp.year, expense_timestamp.month,
+                         1).weekday()+expense_timestamp.day)/7
+                    )
+
+                    if current_week == expense_week:
+                        self.remaining_this_week_in_cents -= expense_value_in_cents
+
+            except:
+                pass
+
+            self.total_remaining_in_cents -= self.variable_expenses[variable_expense]["actual"]
+            self.left_over_inbudget_in_cents -= self.variable_expenses[variable_expense]["budgeted"]
+            self.remaining_by_category_in_cents[variable_expense] = self.variable_expenses[
                 variable_expense]["budgeted"] - self.variable_expenses[variable_expense]["actual"]
-
-        self.total_remaining_in_cents = income_total + \
-            fixed_expenses_total + variable_expenses_total
-
-        self.remaining_by_category_in_cents = remaining_by_category
 
         # Save self as the normal save method would
         super(Budget, self).save(*args, **kwargs)
@@ -93,11 +136,13 @@ class Expense(models.Model):
         if self.id:
             prev_ver = Expense.objects.get(id=self.id)
             try:
-                prev_budget_instance = Budget.objects.get(
-                    id=prev_ver.linked_budget_id
-                )
+
                 # check that current instance linked budget id is not equal to previous expense linked budget id
                 if self.linked_budget_id != prev_ver.linked_budget_id:
+                    prev_budget_instance = Budget.objects.get(
+                        id=prev_ver.linked_budget_id
+                    )
+
                     list_of_expense_ids = prev_budget_instance.expenses_list
 
                     if type(list_of_expense_ids) is list:
@@ -111,12 +156,12 @@ class Expense(models.Model):
                         )
                         prev_budget_instance.save()
 
-                if type(prev_budget_instance.variable_expenses) is dict and prev_ver.category in prev_budget_instance.variable_expenses:
-                    dict_of_prev_budget_category = prev_budget_instance.variable_expenses[
-                        prev_ver.category]
-                    if type(dict_of_prev_budget_category) is dict:
-                        dict_of_prev_budget_category["actual"] -= prev_ver.value_in_cents
-                        prev_budget_instance.save()
+                # if type(prev_budget_instance.variable_expenses) is dict and prev_ver.category in prev_budget_instance.variable_expenses:
+                #     dict_of_prev_budget_category = prev_budget_instance.variable_expenses[
+                #         prev_ver.category]
+                #     if type(dict_of_prev_budget_category) is dict:
+                #         dict_of_prev_budget_category["actual"] -= prev_ver.value_in_cents
+                #         prev_budget_instance.save()
 
             except:
                 pass
@@ -142,33 +187,12 @@ class Expense(models.Model):
                 )
                 budget_instance.save()
 
-            if type(budget_instance.variable_expenses) is dict and instance.category in budget_instance.variable_expenses:
-                dict_of_instance_budget_category = budget_instance.variable_expenses[
-                    instance.category]
-                if type(dict_of_instance_budget_category) is dict:
-                    dict_of_instance_budget_category["actual"] += instance.value_in_cents
-                    budget_instance.save()
-
-             # Week begins on monday isoweekday vs weekday
-            days_in_month = 31
-            try:
-                days_in_month = date(datetime.now().year, datetime.now(
-                ).month, 1) - date(datetime.now().year, datetime.now().month + 1, 1)
-            except:
-                pass
-
-            weeks_in_month = ceil(
-                (date(datetime.now().year, datetime.now().month,
-                      1).weekday()+days_in_month)/7
-            )
-
-            current_week = ceil(
-                (date(datetime.now().year, datetime.now().month,
-                      1).weekday()+datetime.now().day)/7
-            )
-
-            print('This is week {} out of {}.'.format(
-                current_week, weeks_in_month))
+            # if type(budget_instance.variable_expenses) is dict and instance.category in budget_instance.variable_expenses:
+            #     dict_of_instance_budget_category = budget_instance.variable_expenses[
+            #         instance.category]
+            #     if type(dict_of_instance_budget_category) is dict:
+            #         dict_of_instance_budget_category["actual"] += instance.value_in_cents
+            #         budget_instance.save()
 
         except:
             pass
