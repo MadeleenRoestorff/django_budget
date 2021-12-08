@@ -1,8 +1,8 @@
 from typing import Dict
 from django.db import models
 from django.db.models.signals import post_save
-from math import ceil
-from datetime import datetime, date
+from datetime import datetime
+import django_budget.utils as utils
 
 
 class Budget(models.Model):
@@ -21,23 +21,6 @@ class Budget(models.Model):
 
     def save(self, *args, **kwargs):
 
-        # Week begins on monday isoweekday vs weekday
-        days_in_month = 31
-        try:
-            days_in_month = date(self.timestamp.year, self.timestamp.month, 1) - \
-                date(self.timestamp.year, self.timestamp.month + 1, 1)
-        except:
-            pass
-        weeks_in_month = ceil(
-            (date(datetime.now().year, datetime.now().month,
-                  1).weekday()+days_in_month)/7
-        )
-
-        current_week = ceil(
-            (date(datetime.now().year, datetime.now().month,
-                  1).weekday()+datetime.now().day)/7
-        )
-
         income_total = 0
         for person_income in self.income_in_cents:
             income_total += self.income_in_cents[person_income]
@@ -48,8 +31,14 @@ class Budget(models.Model):
 
         expenses_for_budget_instance = {}
         if type(self.expenses_list) is list:
-            expenses_for_budget_instance = Expense.objects.filter(
-                id__in=self.expenses_list).values("timestamp", "category", "value_in_cents")
+            try:
+                expenses_for_budget_instance = Expense.objects.filter(
+                    id__in=self.expenses_list).values("timestamp", "category", "value_in_cents")
+            except:
+                pass
+
+        weeks_in_month = utils.week_in_month(self.timestamp, True)
+        current_week = utils.week_in_month(datetime.now())
 
         self.remaining_by_category_in_cents = {}
         self.left_over_inbudget_in_cents = income_total + fixed_expenses_total
@@ -68,14 +57,8 @@ class Budget(models.Model):
                     if expense_category.casefold().strip() == variable_expense.casefold().strip():
                         self.variable_expenses[variable_expense]["actual"] += expense_value_in_cents
 
-                    expense_week = ceil(
-                        (date(expense_timestamp.year, expense_timestamp.month,
-                         1).weekday()+expense_timestamp.day)/7
-                    )
-
-                    if current_week == expense_week:
+                    if current_week == utils.week_in_month(expense_timestamp):
                         self.remaining_this_week_in_cents -= expense_value_in_cents
-
             except:
                 pass
 
@@ -155,14 +138,6 @@ class Expense(models.Model):
                             set(list_of_expense_ids)
                         )
                         prev_budget_instance.save()
-
-                # if type(prev_budget_instance.variable_expenses) is dict and prev_ver.category in prev_budget_instance.variable_expenses:
-                #     dict_of_prev_budget_category = prev_budget_instance.variable_expenses[
-                #         prev_ver.category]
-                #     if type(dict_of_prev_budget_category) is dict:
-                #         dict_of_prev_budget_category["actual"] -= prev_ver.value_in_cents
-                #         prev_budget_instance.save()
-
             except:
                 pass
 
@@ -186,14 +161,6 @@ class Expense(models.Model):
                     set(list_of_expense_ids)
                 )
                 budget_instance.save()
-
-            # if type(budget_instance.variable_expenses) is dict and instance.category in budget_instance.variable_expenses:
-            #     dict_of_instance_budget_category = budget_instance.variable_expenses[
-            #         instance.category]
-            #     if type(dict_of_instance_budget_category) is dict:
-            #         dict_of_instance_budget_category["actual"] += instance.value_in_cents
-            #         budget_instance.save()
-
         except:
             pass
 
