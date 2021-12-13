@@ -55,36 +55,49 @@ class Budget(models.Model):
         if type(self.expenses_list) is list:
             try:
                 expenses_for_budget_instance = Expense.objects.filter(
-                    id__in=self.expenses_list).values("timestamp", "category", "value_in_cents")
+                    id__in=self.expenses_list
+                ).values("timestamp", "category", "value_in_cents")
             except:
                 pass
 
         weeks_in_month = utils.week_in_month(self.timestamp, True)
         current_week = utils.week_in_month(datetime.now())
 
+        #  Initialise fields
         self.total_remaining_in_cents = income_total + fixed_expenses_total
         self.remaining_by_category_in_cents = {}
         self.left_over_inbudget_in_cents = income_total + fixed_expenses_total
         self.remaining_this_week_in_cents = 0
 
+        #  Loop through all the variable (budgeted) expense categories
         for variable_expense in self.variable_expenses:
             self.variable_expenses[variable_expense]["actual"] = 0
+
+            # Calculate budgeted week total based on weeks in month
             self.remaining_this_week_in_cents += (
-                self.variable_expenses[variable_expense]["budgeted"])/weeks_in_month
+                self.variable_expenses[variable_expense]["budgeted"]
+            ) / weeks_in_month
             try:
+                # Loop through all the linked expenses
                 for expense in expenses_for_budget_instance:
+
+                    # Match the budgeted expense categories() with the actual expense categories(expenses_list)
                     if expense["category"].casefold().strip() == variable_expense.casefold().strip():
+                        # Update variable_expenses with actual expenses
                         self.variable_expenses[variable_expense]["actual"] += expense["value_in_cents"]
 
-                    if current_week == utils.week_in_month(expense["timestamp"]):
-                        self.remaining_this_week_in_cents -= expense["value_in_cents"]
+                    # If actual expense was during current week subtract from remaining_this_week_in_cents
+                    if utils.week_in_month(datetime.now(), True) == utils.week_in_month(expense["timestamp"], True):
+                        if current_week == utils.week_in_month(expense["timestamp"]):
+                            self.remaining_this_week_in_cents -= expense["value_in_cents"]
             except:
                 pass
 
             self.total_remaining_in_cents -= self.variable_expenses[variable_expense]["actual"]
             self.left_over_inbudget_in_cents -= self.variable_expenses[variable_expense]["budgeted"]
             self.remaining_by_category_in_cents[variable_expense] = self.variable_expenses[
-                variable_expense]["budgeted"] - self.variable_expenses[variable_expense]["actual"]
+                variable_expense
+            ]["budgeted"] - self.variable_expenses[variable_expense]["actual"]
 
         # Save self as the normal save method would
         super(Budget, self).save(*args, **kwargs)
