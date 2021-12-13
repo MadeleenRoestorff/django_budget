@@ -8,16 +8,37 @@ import django_budget.utils as utils
 class Budget(models.Model):
     """Monthly Budgets with linked expense instances"""
     timestamp_created_server = models.DateTimeField(auto_now_add=True)
+    # Automatic create a timestamp when an expense instance is created
+
     timestamp_updated_server = models.DateTimeField(auto_now=True)
+    # Automatic create a timestamp when an expense instance is updated
+
     timestamp = models.DateTimeField(null=True, blank=True)
+    # User defined timestamp. Required
+
     expenses_list = models.JSONField(null=True, blank=True)
+    # List of expenses linked to this budget
+
     income_in_cents = models.JSONField(null=True, blank=True)
+    # User defined monthly income name and income value
+
     fixed_expenses = models.JSONField(null=True, blank=True)
+    # User defined fixed monthly expenses (Name and value)
+
     variable_expenses = models.JSONField(null=True, blank=True)
+    # User defined monthly budgeted expenses (category and value)
+
     total_remaining_in_cents = models.IntegerField(null=True, blank=True)
+    # Automatically calculated total based on income, fixed and actual expenses
+
     remaining_by_category_in_cents = models.JSONField(null=True, blank=True)
+    # Automatically calculated category totals based on budgeted and actual variable expenses
+
     remaining_this_week_in_cents = models.IntegerField(null=True, blank=True)
+    # Automatically calculated total based on budgeted and actual variable expenses for curent week
+
     left_over_inbudget_in_cents = models.IntegerField(null=True, blank=True)
+    # Automatically calculated total to help see if budgeted is not more than income - fixed expenses
 
     def save(self, *args, **kwargs):
 
@@ -29,6 +50,7 @@ class Budget(models.Model):
         for fixed_expense in self.fixed_expenses:
             fixed_expenses_total -= self.fixed_expenses[fixed_expense]
 
+        # Get a list of all the expenses linked to this budget with certain fields
         expenses_for_budget_instance = {}
         if type(self.expenses_list) is list:
             try:
@@ -40,10 +62,10 @@ class Budget(models.Model):
         weeks_in_month = utils.week_in_month(self.timestamp, True)
         current_week = utils.week_in_month(datetime.now())
 
+        self.total_remaining_in_cents = income_total + fixed_expenses_total
         self.remaining_by_category_in_cents = {}
         self.left_over_inbudget_in_cents = income_total + fixed_expenses_total
         self.remaining_this_week_in_cents = 0
-        self.total_remaining_in_cents = income_total + fixed_expenses_total
 
         for variable_expense in self.variable_expenses:
             self.variable_expenses[variable_expense]["actual"] = 0
@@ -51,14 +73,11 @@ class Budget(models.Model):
                 self.variable_expenses[variable_expense]["budgeted"])/weeks_in_month
             try:
                 for expense in expenses_for_budget_instance:
-                    expense_timestamp = expense["timestamp"]
-                    expense_category = expense["category"]
-                    expense_value_in_cents = expense["value_in_cents"]
-                    if expense_category.casefold().strip() == variable_expense.casefold().strip():
-                        self.variable_expenses[variable_expense]["actual"] += expense_value_in_cents
+                    if expense["category"].casefold().strip() == variable_expense.casefold().strip():
+                        self.variable_expenses[variable_expense]["actual"] += expense["value_in_cents"]
 
-                    if current_week == utils.week_in_month(expense_timestamp):
-                        self.remaining_this_week_in_cents -= expense_value_in_cents
+                    if current_week == utils.week_in_month(expense["timestamp"]):
+                        self.remaining_this_week_in_cents -= expense["value_in_cents"]
             except:
                 pass
 
@@ -72,7 +91,6 @@ class Budget(models.Model):
 
     @ staticmethod
     def post_save(sender, instance, created, **kwargs):
-
         print("we can run side effects here after saving")
 
 
@@ -93,7 +111,7 @@ class Expense(models.Model):
     # Automatic create a timestamp when an expense instance is updated
 
     timestamp = models.DateTimeField(null=True, blank=True)
-    # User defined timestamp
+    # User defined timestamp. Required
 
     linked_budget_id = models.IntegerField(null=True, blank=True)
     # User selected monthly budget instance to link to this expense
