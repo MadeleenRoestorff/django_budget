@@ -22,8 +22,14 @@ class Budget(models.Model):
     income_in_cents = models.JSONField(null=True, blank=True)
     # User defined monthly income name and income value
 
+    total_income_in_cents = models.IntegerField(null=True, blank=True)
+    # Automatically calculated income total
+
     fixed_expenses = models.JSONField(null=True, blank=True)
     # User defined fixed monthly expenses (Name and value)
+
+    total_fixed_expenses_in_cents = models.IntegerField(null=True, blank=True)
+    # Automatically calculated fixed expenses total
 
     variable_expenses = models.JSONField(null=True, blank=True)
     # User defined monthly budgeted expenses (category and value)
@@ -46,9 +52,13 @@ class Budget(models.Model):
         for person_income in self.income_in_cents:
             income_total += self.income_in_cents[person_income]
 
+        self.total_income_in_cents = income_total
+
         fixed_expenses_total = 0
         for fixed_expense in self.fixed_expenses:
             fixed_expenses_total -= self.fixed_expenses[fixed_expense]
+
+        self.total_fixed_expenses_in_cents = -1*fixed_expenses_total
 
         # Get a list of all the expenses linked to this budget with certain fields
         expenses_for_budget_instance = {}
