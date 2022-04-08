@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='budget',
-            name='fixed_expenses_list',
+            name='fixed_expense_list',
             field=models.JSONField(blank=True, null=True),
         ),
         migrations.AddField(

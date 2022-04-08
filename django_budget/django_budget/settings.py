@@ -139,9 +139,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # General Django REST framework (DRF) settings
 REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 20
+
 }
 
 
-CORS_ALLOWED_ORIGINS = ['http://localhost:3000','http://localhost:3001']
+CORS_ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:3001']

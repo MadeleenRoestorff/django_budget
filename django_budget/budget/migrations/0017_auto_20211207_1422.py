@@ -10,11 +10,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameField(
-            model_name='budget',
-            old_name='fixed_expenses_list',
-            new_name='fixed_expenses',
-        ),
+        # migrations.RenameField(
+        #     model_name='budget',
+        #     old_name='fixed_expenses_list',
+        #     new_name='fixed_expense',
+        # ),
         migrations.RenameField(
             model_name='budget',
             old_name='income_list_in_cents',

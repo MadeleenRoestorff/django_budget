@@ -12,12 +12,12 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='budget',
-            name='total_fixed_expenses_in_cents',
+            name='total_fixed_expense_in_cents',
             field=models.IntegerField(blank=True, null=True),
         ),
         migrations.AddField(
             model_name='budget',
-            name='total_income_in_cents',
+            name='total_income_source',
             field=models.IntegerField(blank=True, null=True),
         ),
     ]

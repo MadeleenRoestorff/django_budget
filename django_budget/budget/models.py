@@ -1,7 +1,7 @@
 from typing import Dict
 from django.db import models
 from django.db.models.signals import post_save
-from datetime import datetime
+from datetime import datetime, date
 import django_budget.utils as utils
 
 
@@ -14,24 +14,27 @@ class Budget(models.Model):
     # Automatic create a timestamp when an expense instance is updated
 
     timestamp = models.DateTimeField(null=True, blank=True)
-    # User defined timestamp. Required
+    # User defined timestamp for the beginning of the budget. Required
+
+    timestamp_end = models.DateTimeField(null=True, blank=True)
+    # User defined timestamp for the end of the budget. Required
 
     expenses_list = models.JSONField(null=True, blank=True)
     # List of expenses linked to this budget
 
-    income_in_cents = models.JSONField(null=True, blank=True)
+    income_source = models.JSONField(null=True, blank=True)
     # User defined monthly income name and income value
 
-    total_income_in_cents = models.IntegerField(null=True, blank=True)
+    total_income_source = models.IntegerField(null=True, blank=True)
     # Automatically calculated income total
 
-    fixed_expenses = models.JSONField(null=True, blank=True)
+    fixed_expense = models.JSONField(null=True, blank=True)
     # User defined fixed monthly expenses (Name and value)
 
-    total_fixed_expenses_in_cents = models.IntegerField(null=True, blank=True)
+    total_fixed_expense_in_cents = models.IntegerField(null=True, blank=True)
     # Automatically calculated fixed expenses total
 
-    variable_expenses = models.JSONField(null=True, blank=True)
+    variable_expense = models.JSONField(null=True, blank=True)
     # User defined monthly budgeted expenses (category and value)
 
     total_remaining_in_cents = models.IntegerField(null=True, blank=True)
@@ -49,16 +52,16 @@ class Budget(models.Model):
     def save(self, *args, **kwargs):
 
         income_total = 0
-        for person_income in self.income_in_cents:
-            income_total += self.income_in_cents[person_income]
+        for person_income in self.income_source:
+            income_total += self.income_source[person_income]
 
-        self.total_income_in_cents = income_total
+        self.total_income_source = income_total
 
-        fixed_expenses_total = 0
-        for fixed_expense in self.fixed_expenses:
-            fixed_expenses_total -= self.fixed_expenses[fixed_expense]
+        fixed_expense_total = 0
+        for f_expense in self.fixed_expense:
+            fixed_expense_total -= self.fixed_expense[f_expense]
 
-        self.total_fixed_expenses_in_cents = -1*fixed_expenses_total
+        self.total_fixed_expense_in_cents = -1*fixed_expense_total
 
         # Get a list of all the expenses linked to this budget with certain fields
         expenses_for_budget_instance = {}
@@ -70,31 +73,36 @@ class Budget(models.Model):
             except:
                 pass
 
-        weeks_in_month = utils.week_in_month(self.timestamp, True)
-        current_week = utils.week_in_month(datetime.now())
+        try:
+            weeks_in_month = utils.week_in_month(self.timestamp, True)
+            current_week = utils.week_in_month(datetime.now())
+
+        except:
+            weeks_in_month = 1
+            current_week = 1
 
         #  Initialise fields
-        self.total_remaining_in_cents = income_total + fixed_expenses_total
+        self.total_remaining_in_cents = income_total + fixed_expense_total
         self.remaining_by_category_in_cents = {}
-        self.left_over_inbudget_in_cents = income_total + fixed_expenses_total
+        self.left_over_inbudget_in_cents = income_total + fixed_expense_total
         self.remaining_this_week_in_cents = 0
 
         #  Loop through all the variable (budgeted) expense categories
-        for variable_expense in self.variable_expenses:
-            self.variable_expenses[variable_expense]["actual"] = 0
+        for v_expense in self.variable_expense:
+            self.variable_expense[v_expense]["actual"] = 0
 
             # Calculate budgeted week total based on weeks in month
             self.remaining_this_week_in_cents += (
-                self.variable_expenses[variable_expense]["budgeted"]
+                self.variable_expense[v_expense]["budgeted"]
             ) / weeks_in_month
             try:
                 # Loop through all the linked expenses
                 for expense in expenses_for_budget_instance:
 
                     # Match the budgeted expense categories() with the actual expense categories(expenses_list)
-                    if expense["category"].casefold().strip() == variable_expense.casefold().strip():
-                        # Update variable_expenses with actual expenses
-                        self.variable_expenses[variable_expense]["actual"] += expense["value_in_cents"]
+                    if expense["category"].casefold().strip() == v_expense.casefold().strip():
+                        # Update variable_expense with actual expenses
+                        self.variable_expense[v_expense]["actual"] += expense["value_in_cents"]
 
                     # If actual expense was during current week subtract from remaining_this_week_in_cents
                     if utils.week_in_month(datetime.now(), True) == utils.week_in_month(expense["timestamp"], True):
@@ -103,11 +111,11 @@ class Budget(models.Model):
             except:
                 pass
 
-            self.total_remaining_in_cents -= self.variable_expenses[variable_expense]["actual"]
-            self.left_over_inbudget_in_cents -= self.variable_expenses[variable_expense]["budgeted"]
-            self.remaining_by_category_in_cents[variable_expense] = self.variable_expenses[
-                variable_expense
-            ]["budgeted"] - self.variable_expenses[variable_expense]["actual"]
+            self.total_remaining_in_cents -= self.variable_expense[v_expense]["actual"]
+            self.left_over_inbudget_in_cents -= self.variable_expense[v_expense]["budgeted"]
+            self.remaining_by_category_in_cents[v_expense] = self.variable_expense[
+                v_expense
+            ]["budgeted"] - self.variable_expense[v_expense]["actual"]
 
         # Save self as the normal save method would
         super(Budget, self).save(*args, **kwargs)

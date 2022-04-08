@@ -1,18 +1,17 @@
 from math import ceil
-from datetime import date, timedelta
-
+from datetime import date
 
 # rework week calculation rather based on just monday - saturday?
 
 
 def days_in_month(date_in):
-    days_in_month = 31
-
+    days_in_month = 10
     try:
-        days_in_month = date(date_in.year, date_in.month, 1) - \
-            date(date_in.year, date_in.month + 1, 1)
+        days_in_month = (date(date_in.year, date_in.month + 1, 1) -
+                         date(date_in.year, date_in.month, 1)).days
     except:
-        pass
+        days_in_month = 31
+
     return date(date_in.year, date_in.month, days_in_month)
 
 
