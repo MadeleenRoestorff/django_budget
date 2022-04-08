@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  django_server:
+    build: .
+    entrypoint: /code/docker_setup/django-dev-entrypoint.sh
+    volumes:
+      - ./:/code
+    ports:
+      - "8000:8000"
+    restart: on-failure
