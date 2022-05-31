@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,7 +30,6 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
-
 INSTALLED_APPS = [
     # CORS (django-cors-headers)
     'corsheaders',
@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django_filters',
     # Django Rest Framework (DRF) (djangorestframework)
     'rest_framework',
+    # DRF enable auth token. Required for REST based login.
+    'rest_framework.authtoken',
     # apps
     'budget.apps.budgetConfig',
     # Django built-in
@@ -136,13 +138,13 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 # General Django REST framework (DRF) settings
 REST_FRAMEWORK = {
+    # only admins can view any data
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAdminUser', ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 20
 
 }
-
 
 CORS_ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:3001']
